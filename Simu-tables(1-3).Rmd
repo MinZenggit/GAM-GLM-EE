@@ -1,0 +1,369 @@
+---
+title: "Simulations for tables 1-3"
+output: html_document
+date: "2023-7-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This document present the codes in tables 1-3 in the main text of paper.
+
+```{r}
+library(Matrix)
+library(extRC)
+library(splines)
+library(dplyr)
+library(doParallel)
+library(foreach)
+library(rootSolve)
+library(targeted)
+rm(list = ls())
+load("True_values_for_simulation/alpha0list.RData") # True alpha0 values
+load("True_values_for_simulation/Ttau.RData") # True ate values
+source("Dtgeneration_new.R")                  # data generation function
+source("GAMAUTOGLM_new.R")                    # the main GAM,GLM methods function
+source("Variance_estiamtion_new.R").          # variance estimation function for GAM/GLM methods 
+source("Fisher_scoring_Algorithm2.R").        # optimization algorithm for GAM/GLM methods 
+source("IC3.R")                               # Information criterion calculation function for GAM method
+source("simu_new.R")                          # functions for simulation, including data generation and ATE estimation.
+source("Resulttidy.R")                        # functions for presents the final simulation results
+source("simulationsettings.R")                # simulation settings
+```
+
+
+```{r eval = FALSE}
+# p01 := P(Y*=1|Y=0); p11 := P(Y*=1|Y=1)
+# casesize/controlsize: the size of selected case and control samples from source population
+# n: the source population number.
+# s01 := P(S=1|Y*=0); s11 := P(S=1|Y*=1)
+# lambdasetting: tuning parameters set, which will be selected by BIC and AIC.
+set.seed(2023)
+p01=0.00; p11 = 0.6;
+casesize =2000; controlsize =2000; n =2000000;
+lambdasetting = c(seq(1, 10, by = 1))
+set = c(1:45)# different simulation settings, see "simulationsettings.R" for details
+for(i in set){
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a 
+  s01 = a[1]; s11 = a[2]
+simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F) -> fit
+cat(i,":",fit,";\ Ttau=", Ttau[i],"\n")
+}
+```
+
+
+# case =2000, p01 = 0.00，p11 =0.6
+```{r warning=F}
+lambdasetting = c(seq(1, 10, by = 1))
+p01=0.00; p11 = 0.6;
+casesize = controlsize =2000; n =2000000;
+name = "2000-0.00-0.6test"
+if(! dir.exists(paste0("simulation-results-tables/",name))){
+  dir.create(paste0("simulation-results-tables/",name))
+}
+cores = 2; report = F
+trials = 4
+for(i in set){
+  starttime <- Sys.time()
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a
+  s01 = a[1]; s11 = a[2]
+  cl<-makeCluster(cores)
+  registerDoParallel(cl)
+  result <- foreach(icount(trials),
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c("splines","Matrix","extRC","dplyr",
+                                  "rootSolve", "targeted"))%dopar%simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F)
+  endtime <- Sys.time()
+  stopCluster(cl)
+  cat("setting ",i,": ")
+  print(endtime-starttime)
+  save(result, file = paste0("simulation-results-tables/",name, "/", name, i,".rdata"))
+}
+```
+
+# case =2000, p01 = 0.00，p11 =0.7
+```{r warning=F}
+lambdasetting = c(seq(1, 10, by = 1))
+p01=0.00; p11 = 0.7;
+casesize = controlsize =2000; n =2000000;
+name = "2000-0.00-0.7test"
+if(! dir.exists(paste0("simulation-results-tables/",name))){
+  dir.create(paste0("simulation-results-tables/",name))
+}
+cores = 12; report = F
+trials = 500
+for(i in set){
+  starttime <- Sys.time()
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a
+  s01 = a[1]; s11 = a[2]
+  cl<-makeCluster(cores)
+  registerDoParallel(cl)
+  result <- foreach(icount(trials),
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c("splines","Matrix","extRC","dplyr",
+                                  "rootSolve", "targeted"))%dopar%simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F)
+  endtime <- Sys.time()
+  stopCluster(cl)
+  cat("setting ",i,": ")
+  print(endtime-starttime)
+  save(result, file = paste0("simulation-results-tables/",name, "/", name, i,".rdata"))
+}
+```
+
+# case =2000, p01 = 0.00，p11 =0.8
+```{r warning=F}
+lambdasetting = c(seq(1, 10, by = 1))
+p01=0.00; p11 = 0.8;
+casesize = controlsize =2000; n =2000000;
+name = "2000-0.00-0.8test"
+if(! dir.exists(paste0("simulation-results-tables/",name))){
+  dir.create(paste0("simulation-results-tables/",name))
+}
+cores = 12; report = F
+trials = 500
+for(i in set){
+  starttime <- Sys.time()
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a
+  s01 = a[1]; s11 = a[2]
+  cl<-makeCluster(cores)
+  registerDoParallel(cl)
+  result <- foreach(icount(trials),
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c("splines","Matrix","extRC","dplyr",
+                                  "rootSolve", "targeted"))%dopar%simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F)
+  endtime <- Sys.time()
+  stopCluster(cl)
+  cat("setting ",  i,": ")
+  print(endtime-starttime)
+  save(result, file = paste0("simulation-results-tables/",name, "/", name, i,".rdata"))
+}
+```
+
+# case =2000, p01 = 0.00，p11 =0.9
+```{r warning=F}
+lambdasetting = c(seq(1, 10, by = 1))
+p01=0.00; p11 = 0.9;
+casesize = controlsize =2000; n =2000000;
+name = "2000-0.00-0.9test"
+if(! dir.exists(paste0("simulation-results-tables/",name))){
+  dir.create(paste0("simulation-results-tables/",name))
+}
+cores = 12; report = F
+trials = 500
+for(i in set){
+  starttime <- Sys.time()
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a
+  s01 = a[1]; s11 = a[2]
+  cl<-makeCluster(cores)
+  registerDoParallel(cl)
+  result <- foreach(icount(trials),
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c("splines","Matrix","extRC","dplyr",
+                                  "rootSolve", "targeted"))%dopar%simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F)
+  endtime <- Sys.time()
+  stopCluster(cl)
+  cat("setting ",i,": ")
+  print(endtime-starttime)
+  save(result, file = paste0("simulation-results-tables/",name, "/", name, i,".rdata"))
+}
+```
+
+# case =2000, p01 = 0.00，p11 =1.0
+```{r warning=F}
+lambdasetting = c(seq(1, 10, by = 1))
+p01=0.00; p11 = 1.0;
+casesize = controlsize =2000; n =2000000;
+name = "2000-0.00-1.0test"
+if(! dir.exists(paste0("simulation-results-tables/",name))){
+  dir.create(paste0("simulation-results-tables/",name))
+}
+cores = 12; report = F
+trials = 500
+for(i in set){
+  starttime <- Sys.time()
+  eval(parse(text = setting[[i]]))
+  gets(n, casesize, controlsize, p01, p11, v = v)-> a
+  s01 = a[1]; s11 = a[2]
+  cl<-makeCluster(cores)
+  registerDoParallel(cl)
+  result <- foreach(icount(trials),
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c("splines","Matrix","extRC","dplyr",
+                                  "rootSolve", "targeted"))%dopar%simu_auto_new(
+                                    Ymodel,
+                                    Yname = "Y_star",
+                                    Xname = c("X1", "X2"),
+                                    Uname = "U",
+                                    Tname = "Tr",
+                                    emodel,
+                                    alpha0,
+                                    p01, p11,
+                                    s01, s11,
+                                    n,
+                                    v,
+                                    startgam[[i]],
+                                    startglm[[i]],
+                                    lambdasetting,
+                                    gamma,
+                                    Kn,
+                                    p,
+                                    D,
+                                    ku ,
+                                    m,
+                                    iter,
+                                    epsilon,
+                                    report = F)
+  endtime <- Sys.time()
+  stopCluster(cl)
+  cat("setting ",i,": ")
+  print(endtime-starttime)
+  save(result, file = paste0("simulation-results-tables/",name, "/", name, i,".rdata"))
+}
+```
+
+# Result tidy
+```{r}
+name = "2000-0.00-0.6test"
+show <- c()
+for(i in c(1:45)){
+  load(file = paste0("simulation-results-tables/", name,"/", name,i,".rdata"))
+  bias = c(getbias2(result[,c(1, 4)], Ttau[i], 5), 
+           getbias2(result[,c(2, 5)], Ttau[i], 5),
+           getbias2(result[,c(3, 6)], Ttau[i], 5))
+  names(bias) = c("tauhat_gam_aic", "Rbias_gam_aic", "coverrate_gam_aic", "RMSE_gam_aic", "convergrate_gam_aic",
+                  "tauhat_gam_bic", "Rbias_gam_bic", "coverrate_gam_bic", "RMSE_gam_bic", "convergrate_gam_bic",
+                  "tauhat_glm", "Rbias_glm", "coverrate_glm", "RMSE_glm", "convergrate_glm")
+  show = rbind(show, bias)
+}
+rownames(show) <- paste0("Ymodel", rep(c(1:9), each = 5), c(".XS",".S",".L", ".M", ".H"))
+show*100 %>% round(digits = 2) -> show
+show[,c(2,7,12, 3,8,13,4,9,14,5,10,15)] -> show
+write.csv(show, file = paste0("simulation-results-tables/", name, "/", name, ".csv"))
+```
