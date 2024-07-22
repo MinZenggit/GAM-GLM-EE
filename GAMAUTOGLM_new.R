@@ -113,7 +113,65 @@ GAMmethod2_news <- function(data,
   return(list(Y_star = Y_star, Z = Z, tauhat = tauhat, varhat = varhat_new,
               thetahat = bhat, likelihood = LK, AIC = AIC, BIC = BIC))
 }
-
+GAMmethod2_thetas <- function(data,
+                              Yname,
+                              Xname,
+                              Uname,
+                              Tname,
+                              p01, p11, v,
+                              start ,
+                              lambda,
+                              gamma ,
+                              Kn,
+                              p,
+                              D,
+                              ku,
+                              m,
+                              iter,
+                              epsilon,
+                              report){
+  n = nrow(data)
+  Y_star = data[,Yname]
+  Z = as.matrix(data.frame(Tr =  data[,Tname], U = data[,Uname], alpha = rep(1, n)))
+  for(Xi in rev(Xname)){
+    Zi = bs(data[,Xi], df = Kn+p, degree = p)
+    Z = cbind(Zi,Z)
+  }
+  np = ncol(Z)
+  p01_star = (1-p11)*v/(1-(p11-p01)*v-p01)
+  p11_star = p11*v/((p11-p01)*v+p01)
+  v_star = (p11-p01)*v+p01
+  s = mean(Y_star)/v_star/mean(1-Y_star)*(1-v_star)
+  c1 = v_star
+  c0 = 1-v_star
+  #b estimation
+  fit1 = FSAlgo2(Y_star, Z, 
+                 start,
+                 lambda,gamma,
+                 Kn,p,D,ku,m,
+                 iter,
+                 epsilon,
+                 p01, p11, s,
+                 report)
+  bhat = fit1$bhat
+  ic = IC3(Y_star, Z, bhat, 
+           lambda, gamma,
+           Kn, p, D, ku, m, 
+           p01, p11, s)
+  LK = ic[1]
+  AIC = ic[2]
+  BIC = ic[3]
+  # tau estimation
+  Z1 = Z; Z1[,np-ku] = rep(1, n); eta1 = Z1%*%bhat
+  Z0 = Z; Z0[,np-ku] = rep(0, n); eta0 = Z0%*%bhat
+  mu11 = mean(plogis(eta1[Y_star==1]))
+  mu10 = mean(plogis(eta1[Y_star==0]))
+  mu01 = mean(plogis(eta0[Y_star==1]))
+  mu00 = mean(plogis(eta0[Y_star==0]))
+  thetahats = c(s, bhat, mu11, mu10, mu01, mu00)
+  tauhat = c1*mu11+c0*mu10-(c1*mu01+c0*mu00)
+  return(list(thetahats = thetahats, tauhat = tauhat, AIC = AIC, BIC = BIC, LK = LK))
+}
 
 Gam_auto_news <- function(data,
                      Yname,

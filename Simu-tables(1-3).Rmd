@@ -25,8 +25,8 @@ load("True_values_for_simulation/alpha0list.RData") # True alpha0 values
 load("True_values_for_simulation/Ttau.RData") # True ate values
 source("Dtgeneration_new.R")                  # data generation function
 source("GAMAUTOGLM_new.R")                    # the main GAM,GLM methods function
-source("Variance_estiamtion_new.R").          # variance estimation function for GAM/GLM methods 
-source("Fisher_scoring_Algorithm2.R").        # optimization algorithm for GAM/GLM methods 
+source("Variance_estiamtion_new.R")         # variance estimation function for GAM/GLM methods 
+source("Fisher_scoring_Algorithm2.R")       # optimization algorithm for GAM/GLM methods 
 source("IC3.R")                               # Information criterion calculation function for GAM method
 source("simu_new.R")                          # functions for simulation, including data generation and ATE estimation.
 source("Resulttidy.R")                        # functions for presents the final simulation results
@@ -40,16 +40,15 @@ source("simulationsettings.R")                # simulation settings
 # n: the source population number.
 # s01 := P(S=1|Y*=0); s11 := P(S=1|Y*=1)
 # lambdasetting: tuning parameters set, which will be selected by BIC and AIC.
-set.seed(2023)
 p01=0.00; p11 = 0.6;
-casesize =2000; controlsize =2000; n =2000000;
+casesize =1000; controlsize =1000; n =2000000;
 lambdasetting = c(seq(1, 10, by = 1))
 set = c(1:45)# different simulation settings, see "simulationsettings.R" for details
 for(i in set){
   eval(parse(text = setting[[i]]))
   gets(n, casesize, controlsize, p01, p11, v = v)-> a 
   s01 = a[1]; s11 = a[2]
-simu_auto_new(
+  simu_auto_new(
                                     Ymodel,
                                     Yname = "Y_star",
                                     Xname = c("X1", "X2"),
@@ -87,8 +86,8 @@ name = "2000-0.00-0.6test"
 if(! dir.exists(paste0("simulation-results-tables/",name))){
   dir.create(paste0("simulation-results-tables/",name))
 }
-cores = 2; report = F
-trials = 4
+cores = 12; report = F
+trials = 500
 for(i in set){
   starttime <- Sys.time()
   eval(parse(text = setting[[i]]))
